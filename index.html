@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GAIA GA Calculator</title>
+
+  <!-- ✅ PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- ✅ App icons and theme -->
+  <link rel="icon" href="icons/icon-192.png">
+  <meta name="theme-color" content="#007bff">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 0;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    h1 { text-align: center; font-size: 1.6em; }
+    form {
+      max-width: 500px; margin: auto; background: #fff;
+      padding: 20px; border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select, button {
+      width: 100%; padding: 10px; font-size: 1em;
+      margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
+    .output {
+      margin-top: 20px; padding: 15px; border-radius: 5px;
+      background: #eef5ff; font-size: 0.95em;
+    }
+    @media (max-width: 600px) {
+      body { margin: 10px; }
+      h1 { font-size: 1.3em; }
+      form { padding: 15px; }
+      input, select, button { font-size: 1em; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>GAIA GA Calculator</h1>
+
+  <form onsubmit="event.preventDefault(); calculate();">
+    <label>Enrolment Date:
+      <input type="date" id="currentDate" required>
+    </label>
+
+    <label>Date of Ultrasound:
+      <input type="date" id="ultrasoundDate" required>
+    </label>
+
+    <label>Ultrasound Gestational Age - Weeks:
+      <input type="number" id="usWeeks" min="0" required>
+    </label>
+
+    <label>Ultrasound Gestational Age - Days:
+      <input type="number" id="usDays" min="0" max="6" required>
+    </label>
+
+    <label>Last Menstrual Period (LMP) Date:
+      <input type="date" id="lmpDate">
+    </label>
+
+    <label>LMP Certainty:
+      <select id="lmpCertainty">
+        <option value="certain">Certain</option>
+        <option value="uncertain">Uncertain</option>
+      </select>
+    </label>
+
+    <button type="submit">Calculate</button>
+
+    <div class="output" id="output"></div>
+  </form>
+
+  <script>
+    // Register service worker for offline/PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('✅ Service Worker registered'))
+        .catch(err => console.log('Service Worker failed:', err));
+    }
+
+    function calculate() {
+      const currentDate = new Date(document.getElementById('currentDate').value);
+      const usDate = new Date(document.getElementById('ultrasoundDate').value);
+      const usWeeks = parseInt(document.getElementById('usWeeks').value);
+      const usDays = parseInt(document.getElementById('usDays').value);
+      const lmpInputValue = document.getElementById('lmpDate').value;
+      const lmpCertainty = document.getElementById('lmpCertainty').value;
+
+      if (isNaN(usWeeks) || isNaN(usDays)) {
+        alert("Please enter valid gestational age values.");
+        return;
+      }
+
+      const usGA_days = usWeeks * 7 + usDays;
+      let trimester;
+      if (usGA_days <= 97) trimester = "First";
+      else if (usGA_days <= 195) trimester = "Second";
+      else trimester = "Third or beyond";
+
+      const pregnancyStartByUS = new Date(usDate.getTime() - usGA_days * 24 * 60 * 60 * 1000);
+      let finalPregnancyStartDate, LOC, source;
+
+      if (!lmpInputValue) {
+        finalPregnancyStartDate = pregnancyStartByUS;
+        LOC = (trimester === "First") ? "LOC-1" :
+              (trimester === "Second") ? "LOC-2b" : "NOT LOC 1-2b";
+        source = "Ultrasound";
+      } else {
+        const lmpDate = new Date(lmpInputValue);
+        const diff_us_lmp = Math.round((usDate - lmpDate) / (1000 * 60 * 60 * 24));
+        const absDiff = Math.abs(diff_us_lmp - usGA_days);
+        if (trimester === "First") {
+          LOC = "LOC-1";
+          if (absDiff <= 7 && lmpCertainty === "certain") {
+            finalPregnancyStartDate = lmpDate; source = "LMP";
+          } else {
+            finalPregnancyStartDate = pregnancyStartByUS; source = "Ultrasound";
+          }
+        } else if (trimester === "Second") {
+          if (lmpCertainty === "certain") {
+            LOC = "LOC-2a";
+            finalPregnancyStartDate = (absDiff <= 14) ? lmpDate : pregnancyStartByUS;
+            source = (absDiff <= 14) ? "LMP" : "Ultrasound";
+          } else {
+            LOC = "LOC-2b";
+            finalPregnancyStartDate = (absDiff <= 10) ? lmpDate : pregnancyStartByUS;
+            source = (absDiff <= 10) ? "LMP" : "Ultrasound";
+          }
+        } else {
+          LOC = "NOT LOC 1-2b";
+          finalPregnancyStartDate = pregnancyStartByUS; source = "Ultrasound";
+        }
+      }
+
+      const currentGA_days = Math.round((currentDate - finalPregnancyStartDate) / (1000 * 60 * 60 * 24));
+      const currentGA_weeks = Math.floor(currentGA_days / 7);
+      const currentGA_remain_days = currentGA_days % 7;
+
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const EDD = new Date(finalPregnancyStartDate);
+      EDD.setDate(finalPregnancyStartDate.getDate() + 280);
+
+      const formattedEDD = `${EDD.getFullYear()}-${months[EDD.getMonth()]}-${String(EDD.getDate()).padStart(2, '0')}`;
+      const formattedPregStartDate = `${finalPregnancyStartDate.getFullYear()}-${months[finalPregnancyStartDate.getMonth()]}-${String(finalPregnancyStartDate.getDate()).padStart(2, '0')}`;
+      const formattedPregStartDateUS = `${pregnancyStartByUS.getFullYear()}-${months[pregnancyStartByUS.getMonth()]}-${String(pregnancyStartByUS.getDate()).padStart(2, '0')}`;
+
+      document.getElementById('output').innerHTML = `
+        <strong>Trimester:</strong> ${trimester}<br>
+        <strong>Pregnancy Start Date by Ultrasound:</strong> ${formattedPregStartDateUS}<br>
+        <strong>GAIA Pregnancy Start Date:</strong> ${formattedPregStartDate}<br>
+        <strong>Source Used:</strong> ${source}<br>
+        <strong>LOC:</strong> ${LOC}<br>
+        <strong>GAIA Gestational Age at Enrolment:</strong> ${currentGA_weeks} weeks and ${currentGA_remain_days} days<br>
+        <strong>GAIA Estimated Due Date (EDD):</strong> ${formattedEDD}
+      `;
+    }
+  </script>
+</body>
+</html>
