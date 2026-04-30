@@ -2,171 +2,173 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GAIA GA Calculator</title>
-
-  <!-- ✅ PWA Manifest -->
-  <link rel="manifest" href="manifest.json">
-
-  <!-- ✅ App icons and theme -->
-  <link rel="icon" href="icons/icon-192.png">
-  <meta name="theme-color" content="#007bff">
-
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      padding: 0;
-      background-color: #f8f9fa;
-      color: #333;
-    }
-    h1 { text-align: center; font-size: 1.6em; }
-    form {
-      max-width: 500px; margin: auto; background: #fff;
-      padding: 20px; border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    label { display: block; margin-top: 15px; font-weight: bold; }
-    input, select, button {
-      width: 100%; padding: 10px; font-size: 1em;
-      margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;
-      box-sizing: border-box;
-    }
-    button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
-    .output {
-      margin-top: 20px; padding: 15px; border-radius: 5px;
-      background: #eef5ff; font-size: 0.95em;
-    }
-    @media (max-width: 600px) {
-      body { margin: 10px; }
-      h1 { font-size: 1.3em; }
-      form { padding: 15px; }
-      input, select, button { font-size: 1em; padding: 12px; }
-    }
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    label, input, select { display: block; margin-top: 10px; }
+    button { margin-top: 20px; }
+    .output { margin-top: 30px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; }
   </style>
 </head>
 <body>
-
   <h1>GAIA GA Calculator</h1>
 
-  <form onsubmit="event.preventDefault(); calculate();">
-    <label>Enrolment Date:
-      <input type="date" id="currentDate" required>
-    </label>
+  <label>Enrolment Date:
+    <input type="text" pattern="\d{4}-\d{2}-\d{2}" placeholder="YYYY-MM-DD" id="currentDate" required>  
+  </label>
 
-    <label>Date of Ultrasound:
-      <input type="date" id="ultrasoundDate" required>
-    </label>
+  <label>Date of Ultrasound:
+    <input type="text" pattern="\d{4}-\d{2}-\d{2}" placeholder="YYYY-MM-DD" id="ultrasoundDate" required>  
+  </label>
 
-    <label>Ultrasound Gestational Age - Weeks:
-      <input type="number" id="usWeeks" min="0" required>
-    </label>
+  <label>Ultrasound Gestational Age - Weeks:
+    <input type="number" id="usWeeks" min="0" required>
+  </label>
 
-    <label>Ultrasound Gestational Age - Days:
-      <input type="number" id="usDays" min="0" max="6" required>
-    </label>
+  <label>Ultrasound Gestational Age - Days:
+    <input type="number" id="usDays" min="0" max="6" required>
+  </label>
 
-    <label>Last Menstrual Period (LMP) Date:
-      <input type="date" id="lmpDate">
-    </label>
+  <label>Last Menstrual Period (LMP) Date:
+    <input type="text" pattern="\d{4}-\d{2}-\d{2}" placeholder="YYYY-MM-DD" id="lmpDate" required>  
+  </label>
 
-    <label>LMP Certainty:
-      <select id="lmpCertainty">
-        <option value="certain">Certain</option>
-        <option value="uncertain">Uncertain</option>
-      </select>
-    </label>
+  <label>LMP Certainty:
+    <select id="lmpCertainty">
+      <option value="certain">Certain</option>
+      <option value="uncertain">Uncertain</option>
+    </select>
+  </label>
 
-    <button type="submit">Calculate</button>
+  <button onclick="calculate()">Calculate</button>
 
-    <div class="output" id="output"></div>
-  </form>
+  <div class="output" id="output"></div>
 
   <script>
-    // Register service worker for offline/PWA
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(() => console.log('✅ Service Worker registered'))
-        .catch(err => console.log('Service Worker failed:', err));
+  function calculate() {
+    const currentDate = new Date(document.getElementById('currentDate').value);
+    const usDate = new Date(document.getElementById('ultrasoundDate').value);
+    const usWeeks = parseInt(document.getElementById('usWeeks').value);
+    const usDays = parseInt(document.getElementById('usDays').value);
+    const lmpInputValue = document.getElementById('lmpDate').value;
+    const lmpCertainty = document.getElementById('lmpCertainty').value;
+  
+    if (isNaN(usWeeks) || isNaN(usDays)) {
+      alert("Please enter valid gestational age values.");
+      return;
     }
 
-    function calculate() {
-      const currentDate = new Date(document.getElementById('currentDate').value);
-      const usDate = new Date(document.getElementById('ultrasoundDate').value);
-      const usWeeks = parseInt(document.getElementById('usWeeks').value);
-      const usDays = parseInt(document.getElementById('usDays').value);
-      const lmpInputValue = document.getElementById('lmpDate').value;
-      const lmpCertainty = document.getElementById('lmpCertainty').value;
+    const usGA_days = usWeeks * 7 + usDays;
 
-      if (isNaN(usWeeks) || isNaN(usDays)) {
-        alert("Please enter valid gestational age values.");
-        return;
-      }
+   // Array of month names
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  
+    // Determine trimester
+    let trimester;
+    if (usGA_days <= 97) {
+      trimester = "First";
+    } else if (usGA_days <= 195) {
+      trimester = "Second";
+    } else {
+      trimester = "Third or beyond";
+    }
+  
+    // Calculate pregnancy start date from ultrasound
+    const pregnancyStartByUS = new Date(usDate.getTime() - (usGA_days - 1)  * 24 * 60 * 60 * 1000 );
+  
+    let finalPregnancyStartDate;
+    let LOC;
+    let source;
+    let absDiff = null;
+    let formattedLMP = "Unknown";
 
-      const usGA_days = usWeeks * 7 + usDays;
-      let trimester;
-      if (usGA_days <= 97) trimester = "First";
-      else if (usGA_days <= 195) trimester = "Second";
-      else trimester = "Third or beyond";
 
-      const pregnancyStartByUS = new Date(usDate.getTime() - usGA_days * 24 * 60 * 60 * 1000);
-      let finalPregnancyStartDate, LOC, source;
-
-      if (!lmpInputValue) {
-        finalPregnancyStartDate = pregnancyStartByUS;
-        LOC = (trimester === "First") ? "LOC-1" :
-              (trimester === "Second") ? "LOC-2b" : "NOT LOC 1-2b";
-        source = "Ultrasound";
-      } else {
-        const lmpDate = new Date(lmpInputValue);
-        const diff_us_lmp = Math.round((usDate - lmpDate) / (1000 * 60 * 60 * 24));
-        const absDiff = Math.abs(diff_us_lmp - usGA_days);
-        if (trimester === "First") {
-          LOC = "LOC-1";
-          if (absDiff <= 7 && lmpCertainty === "certain") {
-            finalPregnancyStartDate = lmpDate; source = "LMP";
-          } else {
-            finalPregnancyStartDate = pregnancyStartByUS; source = "Ultrasound";
-          }
-        } else if (trimester === "Second") {
+    // Case: LMP is missing
+    if (!lmpInputValue) {
+      finalPregnancyStartDate = pregnancyStartByUS;
+      LOC = (trimester === "First") ? "LOC-1" : LOC = (trimester === "Second") ? "LOC-2b" :  "NOT LOC 1-2b";
+      source = "Ultrasound";
+    } else {
+      const lmpDate = new Date(lmpInputValue);
+      const diff_us_lmp = Math.round((pregnancyStartByUS - lmpDate ) / (1000 * 60 * 60 * 24));
+      absDiff = Math.abs(diff_us_lmp );
+	formattedLMP = lmpDate.getFullYear() + '-' +
+    		months[lmpDate.getMonth()] + '-' +
+    		String(lmpDate.getDate()).padStart(2, '0');
+	
+  
+      if (trimester === "First") {
+        LOC = "LOC-1";
+        if (absDiff <= 7 && lmpCertainty === "certain") {
+          finalPregnancyStartDate = lmpDate;
+          source = "LMP";
+        } else {
+          finalPregnancyStartDate = pregnancyStartByUS;
+          source = "Ultrasound";
+        }
+      } else if (trimester === "Second"){
           if (lmpCertainty === "certain") {
             LOC = "LOC-2a";
             finalPregnancyStartDate = (absDiff <= 14) ? lmpDate : pregnancyStartByUS;
-            source = (absDiff <= 14) ? "LMP" : "Ultrasound";
+            source = (absDiff <= 14) ?  "LMP"  : "Ultrasound";        
           } else {
             LOC = "LOC-2b";
             finalPregnancyStartDate = (absDiff <= 10) ? lmpDate : pregnancyStartByUS;
-            source = (absDiff <= 10) ? "LMP" : "Ultrasound";
+            source = (absDiff <= 10) ? "LMP"  : "Ultrasound";   
           }
         } else {
-          LOC = "NOT LOC 1-2b";
-          finalPregnancyStartDate = pregnancyStartByUS; source = "Ultrasound";
+            LOC = "NOT LOC 1-2b";
+            finalPregnancyStartDate = pregnancyStartByUS; // Default to US-based if beyond 27 weeks
+            source = "Ultrasound";
         }
+  
       }
+  
+    // Calculate gestational age at current date
+    const currentGA_days = Math.round((currentDate - finalPregnancyStartDate ) / (1000 * 60 * 60 * 24) + 1);
+    const currentGA_weeks = Math.floor((currentGA_days)/ 7);
+    const currentGA_remain_days = (currentGA_days) % 7;
 
-      const currentGA_days = Math.round((currentDate - finalPregnancyStartDate) / (1000 * 60 * 60 * 24));
-      const currentGA_weeks = Math.floor(currentGA_days / 7);
-      const currentGA_remain_days = currentGA_days % 7;
 
-      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      const EDD = new Date(finalPregnancyStartDate);
-      EDD.setDate(finalPregnancyStartDate.getDate() + 280);
 
-      const formattedEDD = `${EDD.getFullYear()}-${months[EDD.getMonth()]}-${String(EDD.getDate()).padStart(2, '0')}`;
-      const formattedPregStartDate = `${finalPregnancyStartDate.getFullYear()}-${months[finalPregnancyStartDate.getMonth()]}-${String(finalPregnancyStartDate.getDate()).padStart(2, '0')}`;
-      const formattedPregStartDateUS = `${pregnancyStartByUS.getFullYear()}-${months[pregnancyStartByUS.getMonth()]}-${String(pregnancyStartByUS.getDate()).padStart(2, '0')}`;
 
-      document.getElementById('output').innerHTML = `
-        <strong>Trimester:</strong> ${trimester}<br>
-        <strong>Pregnancy Start Date by Ultrasound:</strong> ${formattedPregStartDateUS}<br>
-        <strong>GAIA Pregnancy Start Date:</strong> ${formattedPregStartDate}<br>
-        <strong>Source Used:</strong> ${source}<br>
-        <strong>LOC:</strong> ${LOC}<br>
-        <strong>GAIA Gestational Age at Enrolment:</strong> ${currentGA_weeks} weeks and ${currentGA_remain_days} days<br>
-        <strong>GAIA Estimated Due Date (EDD):</strong> ${formattedEDD}
-      `;
-    }
+    // Calculate Estimated Due Date (EDD) 
+    const EDD = new Date(finalPregnancyStartDate);
+    EDD.setDate(finalPregnancyStartDate.getDate() + 279); // Add 279 days (40 weeks) with first day as day 1
+    const formattedEDD = EDD.getFullYear() + '-' +
+      months[EDD.getMonth()] + '-' +
+      String(EDD.getDate()).padStart(2, '0');
+
+    const formattedpregstartdate = finalPregnancyStartDate.getFullYear() + '-' +
+      months[finalPregnancyStartDate.getMonth()] + '-' +
+      String(finalPregnancyStartDate.getDate()).padStart(2, '0');
+
+
+    const formattedpregstartdateus = pregnancyStartByUS.getFullYear() + '-' +
+      months[pregnancyStartByUS.getMonth()] + '-' +
+      String(pregnancyStartByUS.getDate()).padStart(2, '0');
+
+
+
+
+     // Output results
+    const outputDiv = document.getElementById('output');
+    outputDiv.innerHTML = `
+      <strong>Trimester:</strong> ${trimester}<br>
+	<strong>LMP:</strong> ${formattedLMP}<br>
+      <strong>Pregnancy Start Date by Ultrasound:</strong> ${formattedpregstartdateus}<br>
+	<strong>Absolute Difference (US vs LMP):</strong>
+	${absDiff !== null ? absDiff + ' days' : 'Not applicable'}<br>
+<br>
+      <strong>GAIA Pregnancy Start Date:</strong> ${formattedpregstartdate}<br>
+      <strong>Source Used:</strong> ${source}<br>
+      <strong>LOC:</strong> ${LOC}<br>
+<br>
+      <strong>GAIA Gestational Age at Enrolment:</strong> ${currentGA_weeks} weeks and ${currentGA_remain_days} days <br>
+      <strong>GAIA Estimated Due Date (EDD):</strong> ${formattedEDD}
+    `;
+  }
   </script>
 </body>
 </html>
