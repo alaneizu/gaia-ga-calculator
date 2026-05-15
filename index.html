@@ -59,6 +59,7 @@
     }
 
     const usGA_days = usWeeks * 7 + usDays;
+    const offset = 0; 
 
    // Array of month names
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
@@ -75,7 +76,7 @@
     }
   
     // Calculate pregnancy start date from ultrasound
-    const pregnancyStartByUS = new Date(usDate.getTime() - (usGA_days - 1)  * 24 * 60 * 60 * 1000 );
+    const pregnancyStartByUS = new Date(usDate.getTime() - (usGA_days - offset)  * 24 * 60 * 60 * 1000 );
   
     let finalPregnancyStartDate;
     let LOC;
@@ -126,7 +127,7 @@
       }
   
     // Calculate gestational age at current date
-    const currentGA_days = Math.round((currentDate - finalPregnancyStartDate ) / (1000 * 60 * 60 * 24) + 1);
+    const currentGA_days = Math.round((currentDate - finalPregnancyStartDate ) / (1000 * 60 * 60 * 24) + offset);
     const currentGA_weeks = Math.floor((currentGA_days)/ 7);
     const currentGA_remain_days = (currentGA_days) % 7;
 
@@ -135,7 +136,7 @@
 
     // Calculate Estimated Due Date (EDD) 
     const EDD = new Date(finalPregnancyStartDate);
-    EDD.setDate(finalPregnancyStartDate.getDate() + 279); // Add 279 days (40 weeks) with first day as day 1
+    EDD.setDate(finalPregnancyStartDate.getDate() + 280 - offset); // Add 80 days (40 weeks) minus offset
     const formattedEDD = EDD.getFullYear() + '-' +
       months[EDD.getMonth()] + '-' +
       String(EDD.getDate()).padStart(2, '0');
